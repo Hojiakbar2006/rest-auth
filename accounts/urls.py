@@ -1,7 +1,31 @@
+from unicodedata import name
 from django.urls import path
-from .views import RegisterUserView, VerifyUserEmail
+from .views import (
+    RegisterView,
+    VerifyUserEmail,
+    LoginUserView,
+    TestingAuthenticatedReq,
+    PasswordResetConfirm,
+    PasswordResetRequestView,
+    SetNewPasswordView,
+    LogoutApiView,
+)
+from rest_framework_simplejwt.views import (
+    TokenRefreshView,
+)
 
 urlpatterns = [
-    path('register/', RegisterUserView.as_view(), name='register'),
-    path('verify_email/', VerifyUserEmail.as_view(), name='verify')
+    path("auth/register/", RegisterView.as_view(), name="register"),
+    path("auth/verify-email/", VerifyUserEmail.as_view(), name="verify"),
+    path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("auth/login/", LoginUserView.as_view(), name="login-user"),
+    path("get-something/", TestingAuthenticatedReq.as_view(),
+         name="just-for-testing"),
+    path("auth/password-reset/", PasswordResetRequestView.as_view(),
+         name="password-reset",),
+    path("auth/password-reset-confirm/<uidb64>/<token>/",
+         PasswordResetConfirm.as_view(), name="reset-password-confirm",),
+    path("auth/set-new-password/",
+         SetNewPasswordView.as_view(), name="set-new-password"),
+    path("auth/logout/", LogoutApiView.as_view(), name="logout"),
 ]
