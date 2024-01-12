@@ -27,8 +27,9 @@ class RegisterView(GenericAPIView):
             send_generated_otp_to_email(user_data['email'], request)
             return Response({
                 'data': user_data,
-                'message': 'thanks for signing up a passcode has be sent to verify your email'
-            }, status=status.HTTP_201_CREATED)
+                'message': 'thanks for signing up a passcode has be sent to verify your email',
+                'status':status.HTTP_201_CREATED
+            })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -66,7 +67,7 @@ class PasswordResetRequestView(GenericAPIView):
         serializer = self.serializer_class(
             data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        return Response({'message': 'we have sent you a link to reset your password'}, status=status.HTTP_200_OK)
+        return Response({'success': True, 'message': 'we have sent you a link to reset your password'}, status=status.HTTP_200_OK)
         # return Response({'message':'user with that email does not exist'}, status=status.HTTP_400_BAD_REQUEST)
 
 
