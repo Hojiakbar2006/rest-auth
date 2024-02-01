@@ -1,16 +1,10 @@
-
-import json
-from dataclasses import field
 from .models import User
 from rest_framework import serializers
-from string import ascii_lowercase, ascii_uppercase
 from django.contrib.auth import authenticate
 from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.utils.encoding import smart_str, force_str, smart_bytes
+from django.utils.encoding import force_str, smart_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-from django.contrib.sites.shortcuts import get_current_site
-from django.urls import reverse
 from .utils import send_normal_email
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
@@ -29,8 +23,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         password = attrs.get('password', '')
         password2 = attrs.get('password2', '')
         if password != password2:
-            raise serializers.ValidationError("passwords do not match")
-
+            raise serializers.ValidationError("Passwords do not match")
         return attrs
 
     def create(self, validated_data):
@@ -61,9 +54,10 @@ class LoginSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         user = authenticate(request, email=email, password=password)
         if not user:
-            raise AuthenticationFailed("invalid credential try again")
+            raise AuthenticationFailed(
+                "Invalid credentials. Please try again.")
         if not user.is_verified:
-            raise AuthenticationFailed("Email is not verified")
+            raise AuthenticationFailed("Email is not verified.")
         tokens = user.tokens()
         return {
             'email': user.email,
@@ -76,31 +70,22 @@ class LoginSerializer(serializers.ModelSerializer):
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=255)
 
-    class Meta:
-        fields = ['email']
-
     def validate(self, attrs):
-
         email = attrs.get('email')
         if User.objects.filter(email=email).exists():
             user = User.objects.get(email=email)
             uidb64 = urlsafe_base64_encode(smart_bytes(user.id))
             token = PasswordResetTokenGenerator().make_token(user)
-            request = self.context.get('request')
-            # current_site = get_current_site(request).domain
-            # relative_link = reverse(
-            #     'reset-password-confirm', kwargs={'uidb64': uidb64, 'token': token})
             abslink = f"http://localhost:3000/reset-password-confirm/{
                 uidb64}/{token}"
             email_body = f"Hi {
-                user.first_name} use the link below to reset your password {abslink}"
+                user.first_name}, use the link below to reset your password: {abslink}"
             data = {
                 'email_body': email_body,
                 'email_subject': "Reset your Password",
                 'to_email': user.email
             }
             send_normal_email(data)
-
         return attrs
 
 
@@ -111,9 +96,6 @@ class SetNewPasswordSerializer(serializers.Serializer):
         max_length=100, min_length=6, write_only=True)
     uidb64 = serializers.CharField(min_length=1, write_only=True)
     token = serializers.CharField(min_length=3, write_only=True)
-
-    class Meta:
-        fields = ['password', 'confirm_password', 'uidb64', 'token']
 
     def validate(self, attrs):
         try:
@@ -126,14 +108,14 @@ class SetNewPasswordSerializer(serializers.Serializer):
             user = User.objects.get(id=user_id)
             if not PasswordResetTokenGenerator().check_token(user, token):
                 raise AuthenticationFailed(
-                    "reset link is invalid or has expired", 401)
+                    "Reset link is invalid or has expired", 401)
             if password != confirm_password:
-                raise AuthenticationFailed("passwords do not match")
+                raise AuthenticationFailed("Passwords do not match")
             user.set_password(password)
             user.save()
             return user
         except Exception as e:
-            return AuthenticationFailed("link is invalid or has expired")
+            raise AuthenticationFailed("Link is invalid or has expired")
 
 
 class LogoutUserSerializer(serializers.Serializer):
@@ -145,7 +127,6 @@ class LogoutUserSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         self.token = attrs.get('refresh_token')
-
         return attrs
 
     def save(self, **kwargs):
@@ -153,4 +134,5 @@ class LogoutUserSerializer(serializers.Serializer):
             token = RefreshToken(self.token)
             token.blacklist()
         except TokenError:
-            return self.fail('bad_token')
+            raise AuthenticationFailed(
+                'Token is expired or invalid', code='bad_token')
